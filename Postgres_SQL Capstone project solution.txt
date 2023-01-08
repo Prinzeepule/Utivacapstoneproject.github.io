@@ -1,0 +1,184 @@
+---Postgres SQL is the database used---
+
+
+---Create Schema
+Create Schema Chinook;
+
+---Create all the tables in the database Chinook Media
+---Created column names and upload the csv files for each table
+Create table Chinook.Artist
+(Artistid int not null,
+Name Varchar(100) not null)
+
+Create table Chinook.Album
+(Albumid int not null,
+Title Varchar(100) not null,
+Artistid int not null)
+
+Create table Chinook.Track
+(Trackid Bigint not null,
+Name Varchar(150) not null,
+Albumid int not null,
+MediaTypeid smallint not null,
+Genreid int not null,
+Composer Varchar(200),
+Milliseconds Bigint not null,
+Bytes Bigint not null,
+UnitPrice Decimal(5,2) not null)
+
+Create table Chinook.MediaType
+(MediaTypeid Smallint not null,
+Name Varchar(50) not null)
+
+Create table Chinook.Genre
+(Genreid int not null,
+Name Varchar(50) not null)
+
+Create table Chinook.PlayListTrack
+(Playlistid int not null,
+Trackid Bigint not null)
+
+Create table Chinook.PlayList
+(Playlistid int not null,
+Name Varchar (50))
+
+Create table Chinook.InvoiceLine
+(InvoiceLineid Bigint not null,
+Invoiceid int not null,
+Trackid Bigint not null,
+UnitPrice Decimal(5,2)  not null,
+Quantity int not null)
+
+
+Create table Chinook.Invoice
+(Invoiceid int not null,
+Customerid int not null,
+InvoiceDate Timestamp,
+BillingAddress VarChar(150) not null,
+BillingCity VarChar(50) not null,
+BillingState Varchar(50),
+BillingCountry VarChar(50),
+BillingPostalCode Varchar(20),
+Total Decimal(5,2) not null)
+
+Create table Chinook.Customer
+(Customerid int not null,
+FirstName Varchar(50) not null,
+LastName Varchar(50) not null,
+Company Varchar(70),
+Address VarChar(150),
+City Varchar(50),
+State Varchar(20),
+Country Varchar(50),
+PostalCode VarChar(20),
+Phone VarChar(50),
+Fax VarChar(50),
+Email VarChar(70),
+SupportRepid int not null)
+
+
+Create table Chinook.Employee
+(Employeeid int not null,
+LastName Varchar(50) not null,
+FirstName Varchar(50) not null,
+Title Varchar(70),
+ ReportsTo Varchar(50),
+ BirthDate timestamp,
+ HireDate timestamp,
+Address VarChar(150),
+City Varchar(50),
+State Varchar(20),
+Country Varchar(50),
+PostalCode VarChar(20),
+Phone VarChar(50),
+Fax VarChar(50),
+Email VarChar(70))
+
+--Uploades all files
+
+
+---Task 1---
+---Join tables Invoice,invoiceline,track and genre then saved as a view
+
+Create view chinook.vwTrackSold
+as
+select i.customerid, i.billingcountry as country, l.quantity, t.trackid, g.name as Genre 
+from Chinook.invoice i left join chinook.invoiceLine l
+on i.invoiceid = l.invoiceid
+left join chinook.track t
+on l.trackid = t.trackid
+left join chinook.genre g
+on t.genreid = g.genreid;
+
+---1. Number of tracks sold in USA by Genre
+---In absolute number
+Select sum(quantity) as QuantitySold,Genre from chinook.vwTrackSold
+where country = 'USA'
+group by Genre
+order by 1 Desc;
+
+
+---The absolute number's query been saved as a view to aid the calculation in percentage
+Create view chinook.vwPercentage
+as
+Select count(quantity) as QuantitySold,Genre from chinook.vwTrackSold
+where country = 'USA'
+group by Genre
+order by 1 Desc;
+
+---Number of tracks sold in USA by Genre in percentage---
+select genre, quantitysold, Round(quantitysold/(sum(quantitysold) over ()) *100,2) as percentage
+from chinook.vwPercentage
+order by 3 desc;
+
+
+---Rock(31.78%), Latin(18.42%) and metal(12.96%) are the top 3 genre sold in USA while Science fiction and Easy Listening aren't been 
+---...patronised as such and won't generate enough sales in the US.
+---Albums of Red Tone(~10%),Slim Jim Bites and Meteor and the Girls should be purchased to the store as their genre are more sold  than Regal's hiphop                                                                                                                          
+
+
+
+---Task 2---
+---Join tables Employee,Customer,Invoice and Ivoiceline to create a view
+Create view chinook.vwSalesData
+as
+select i.customerid, c.country, c.supportrepid,l.invoiceid, e.firstname as repname, l.quantity*l.unitprice as salesvalue,l.invoicelineid, i.total,e.hiredate
+from 
+chinook.employee e join chinook.customer c 
+on e.employeeid=c.supportrepid
+join chinook.invoice i
+on c.customerid=i.customerid
+join chinook.invoiceline l 
+on l.invoiceid=i.invoiceid;
+
+
+---1. Total dollar amount of sales assigned to each support agent within the company
+select supportrepid, repname, sum(salesvalue), hiredate from chinook.vwSalesData
+group by supportrepid, repname, hiredate
+order by 3 desc;
+
+---2. The employee with the oldesdt hire date made the highest.... 
+---...Therefore the total amount of sales made by each employee is a reflection of their experience. 
+
+
+---3. Analysis of sales data for customers from each different countries
+---Total number of customer
+select country, count(distinct customerid) as TotalNumberofCustomer from chinook.vwSalesData
+group by country
+order by 2 desc;
+
+---Total value of sales
+select country, sum(salesvalue) as TotalValueOfSales from chinook.vwSalesData
+Group by country
+order by 2 desc;
+
+---Average value of sales by customer
+select country, round(sum(salesvalue)/count(distinct customerid),2) as Averagevalueofsales from chinook.vwSalesData
+group by country
+order by 2 desc;
+
+---Average order value
+select country, round(sum(salesvalue)/count(distinct invoiceid),2) as Averageordervalue from chinook.vwSalesData
+group by country
+order by 2 desc;
+
