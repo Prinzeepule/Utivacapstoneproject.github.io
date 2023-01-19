@@ -157,9 +157,6 @@ select supportrepid, repname, sum(salesvalue), hiredate from chinook.vwSalesData
 group by supportrepid, repname, hiredate
 order by 3 desc;
 
----2. The employee with the oldesdt hire date made the highest.... 
----...Therefore the total amount of sales made by each employee is a reflection of their experience. 
-
 
 ---3. Analysis of sales data for customers from each different countries
 ---Total number of customer
